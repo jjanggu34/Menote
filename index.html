@@ -601,11 +601,8 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <h2>⚙️ API 키 설정</h2>
-    <p>키는 브라우저에만 저장됩니다.</p>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">Anthropic 키 (회의록 요약)</div>
+    <p>AI 회의록 요약에 사용됩니다.<br>키는 브라우저에만 저장됩니다.</p>
     <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
-    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">OpenAI 키 (Whisper 음성인식)</div>
-    <input type="password" id="openaiKeyInput" placeholder="sk-proj-..." />
     <button class="btn-primary" onclick="saveApiKey()">저장하기</button>
     <button class="btn-ghost" onclick="skipApiKey()">나중에</button>
   </div>
@@ -714,29 +711,22 @@
 <script>
 // ── State ──
 let apiKey = '';
-let openaiKey = '';
 let isRecording = false;
-let mediaRecorder = null;
-let audioChunks = [];
+let recognition = null;
 let timerInterval = null;
 let timerSeconds = 0;
 let waveInterval = null;
-let analyser = null;
-let audioCtx = null;
 let allTranscript = [];
 let detectedKeywords = new Set();
 let activeSumTab = 'summary';
 let searchSources = { drive: true, local: true };
 let autoSearchTimer = null;
 let summaryData = null;
-let whisperInterval = null;
 
 // ── API Key ──
 function saveApiKey() {
   const v = document.getElementById('apiKeyInput').value.trim();
-  const o = document.getElementById('openaiKeyInput').value.trim();
   if (v) { apiKey = v; localStorage.setItem('mnApiKey', v); }
-  if (o) { openaiKey = o; localStorage.setItem('mnOpenaiKey', o); }
   document.getElementById('apiModal').classList.remove('show');
 }
 
@@ -747,10 +737,11 @@ function skipApiKey() {
 // Load saved key
 window.onload = () => {
   const saved = localStorage.getItem('mnApiKey');
-  const savedOai = localStorage.getItem('mnOpenaiKey');
-  if (saved) { apiKey = saved; document.getElementById('apiKeyInput').value = saved; }
-  if (savedOai) { openaiKey = savedOai; document.getElementById('openaiKeyInput').value = savedOai; }
-  if (saved || savedOai) document.getElementById('apiModal').classList.remove('show');
+  if (saved) {
+    apiKey = saved;
+    document.getElementById('apiKeyInput').value = saved;
+    document.getElementById('apiModal').classList.remove('show');
+  }
 };
 
 // ── Page Switch ──
@@ -767,47 +758,51 @@ function toggleRecording() {
   else startRecording();
 }
 
-let mediaRecorder = null;
-let audioChunks = [];
-let whisperTimer = null;
-
-async function startRecording() {
-  if (!openaiKey) {
-    alert('OpenAI API 키를 먼저 입력해주세요. ⚙️ 버튼을 눌러주세요.');
-    document.getElementById('apiModal').classList.add('show');
+function startRecording() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Chrome 브라우저를 사용해주세요.');
     return;
   }
 
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-    audioChunks = [];
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'ko-KR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
-    };
+  let interimDiv = null;
 
-    mediaRecorder.onstop = async () => {
-      if (audioChunks.length === 0) return;
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      audioChunks = [];
-      await transcribeWithWhisper(blob);
-      // 녹음 중이면 다시 시작
-      if (isRecording) {
-        mediaRecorder.start();
-        whisperTimer = setTimeout(() => {
-          if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-        }, 30000);
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        const text = e.results[i][0].transcript.trim();
+        if (text) {
+          addEntry(text);
+          extractKeywords(text);
+          if (interimDiv) { interimDiv.remove(); interimDiv = null; }
+        }
+      } else {
+        interim += e.results[i][0].transcript;
       }
-    };
+    }
+    if (interim) {
+      if (!interimDiv) {
+        interimDiv = document.createElement('div');
+        interimDiv.className = 'transcript-entry';
+        interimDiv.style.opacity = '0.45';
+        interimDiv.style.borderStyle = 'dashed';
+        document.getElementById('transcriptArea').appendChild(interimDiv);
+      }
+      interimDiv.innerHTML = `<div class="entry-time">${fmt(timerSeconds)} · 인식 중...</div><div class="entry-text">${interim}</div>`;
+      scrollT();
+    }
+  };
 
-    mediaRecorder.start();
-    // 30초마다 Whisper로 전송
-    whisperTimer = setTimeout(() => {
-      if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-    }, 30000);
-
-    isRecording = true;
+  recognition.onerror = (e) => { if (e.error !== 'no-speech') stopRecording(); };
+  recognition.onend = () => { if (isRecording) recognition.start(); };
+  recognition.start();
+  isRecording = true;
 
   document.getElementById('recBtn').className = 'rec-btn recording';
   document.getElementById('recBtn').textContent = '⏹️';
@@ -829,13 +824,8 @@ async function startRecording() {
 }
 
 function stopRecording() {
+  if (recognition) { recognition.stop(); recognition = null; }
   isRecording = false;
-  clearTimeout(whisperTimer);
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(t => t.stop());
-  }
-  mediaRecorder = null;
   clearInterval(timerInterval);
   clearInterval(waveInterval);
 
@@ -864,29 +854,6 @@ function highlightKw(text) {
 function scrollT() {
   const a = document.getElementById('transcriptArea');
   a.scrollTop = a.scrollHeight;
-}
-
-async function transcribeWithWhisper(blob) {
-  try {
-    const formData = new FormData();
-    formData.append('file', blob, 'audio.webm');
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'ko');
-
-    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openaiKey}` },
-      body: formData
-    });
-
-    const data = await res.json();
-    if (data.text && data.text.trim()) {
-      addEntry(data.text.trim());
-      extractKeywords(data.text.trim());
-    }
-  } catch (e) {
-    console.error('Whisper error:', e);
-  }
 }
 
 // ── Keywords ──
@@ -1105,4 +1072,5 @@ function fmt(s) {
 </script>
 </body>
 </html>
+
 
