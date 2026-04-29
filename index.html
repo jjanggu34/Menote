@@ -1,1 +1,564 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MeetNote — AI 회의록</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #111318; --surface2: #181c24; --border: #1e2330;
+    --accent: #3b82f6; --accent2: #06b6d4; --green: #10b981; --red: #ef4444;
+    --yellow: #f59e0b; --text: #e2e8f0; --text2: #94a3b8; --text3: #475569;
+    --highlight: rgba(59,130,246,0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; }
+  .logo-dot { width: 9px; height: 9px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); animation: pulse-dot 2s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; }
+  .status-badge.idle { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+  .status-badge.recording { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .settings-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; color: var(--text2); cursor: pointer; font-size: 13px; }
+  .main-tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .main-tab { flex: 1; padding: 11px; text-align: center; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; background: none; border: none; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .main-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .page { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .page.active { display: flex; }
+  .rec-hero { display: flex; flex-direction: column; align-items: center; padding: 32px 20px 24px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 16px; }
+  .rec-btn { width: 88px; height: 88px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 36px; transition: all 0.2s; }
+  .rec-btn.idle { background: var(--accent); box-shadow: 0 0 30px rgba(59,130,246,0.5); }
+  .rec-btn.recording { background: var(--red); box-shadow: 0 0 30px rgba(239,68,68,0.6); animation: rec-pulse 1.5s infinite; }
+  @keyframes rec-pulse { 0%,100%{box-shadow:0 0 25px rgba(239,68,68,0.5)} 50%{box-shadow:0 0 45px rgba(239,68,68,0.9)} }
+  .rec-btn:active { transform: scale(0.94); }
+  .timer { font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 500; color: var(--accent2); letter-spacing: 3px; }
+  .rec-label { font-size: 14px; color: var(--text2); text-align: center; }
+  .waveform { display: flex; align-items: center; gap: 4px; height: 36px; }
+  .wave-bar { width: 4px; background: var(--accent); border-radius: 2px; transition: height 0.1s; opacity: 0.6; }
+  .transcript-area { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--text3); gap: 10px; text-align: center; font-size: 14px; line-height: 1.6; }
+  .transcript-entry { margin-bottom: 12px; padding: 12px 14px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); animation: fade-in 0.3s ease; }
+  @keyframes fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .entry-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text3); margin-bottom: 6px; }
+  .entry-text { font-size: 14px; line-height: 1.7; }
+  .keyword-highlight { background: rgba(59,130,246,0.25); color: var(--accent2); border-radius: 3px; padding: 1px 4px; font-weight: 500; }
+  .summary-sheet { background: var(--surface); border-top: 1px solid var(--border); }
+  .summary-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .sum-tab { flex: 1; padding: 10px 8px; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; background: none; border: none; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; }
+  .sum-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .summary-content { padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--text2); max-height: 160px; overflow-y: auto; }
+  .generate-btn { margin: 8px 16px 14px; padding: 12px; background: var(--highlight); border: 1px solid rgba(59,130,246,0.3); border-radius: 10px; color: var(--accent); font-size: 14px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; width: calc(100% - 32px); font-weight: 500; }
+  .generate-btn:disabled { opacity: 0.4; }
+  .drive-banner { padding: 10px 16px; background: rgba(16,185,129,0.08); border-bottom: 1px solid rgba(16,185,129,0.2); font-size: 12px; color: var(--green); }
+  .search-box { padding: 14px 16px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+  .search-input-wrap { position: relative; display: flex; align-items: center; }
+  .search-input-wrap input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 42px 11px 14px; color: var(--text); font-size: 15px; font-family: 'Noto Sans KR', sans-serif; outline: none; }
+  .search-input-wrap input:focus { border-color: var(--accent); }
+  .search-input-wrap button { position: absolute; right: 10px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; }
+  .source-btns { display: flex; gap: 8px; }
+  .source-btn { flex: 1; padding: 8px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text3); cursor: pointer; }
+  .source-btn.active { border-color: var(--accent); background: var(--highlight); color: var(--accent); }
+  .keyword-chips { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-label { font-size: 11px; color: var(--text3); width: 100%; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); cursor: pointer; }
+  .chip.active { border-color: var(--accent); background: var(--highlight); color: var(--accent); }
+  .search-results { flex: 1; overflow-y: auto; padding: 12px 16px; }
+  .result-item { padding: 13px 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 8px; cursor: pointer; }
+  .result-item:active { background: var(--highlight); }
+  .result-name { font-size: 14px; font-weight: 500; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .result-meta { font-size: 11px; color: var(--text3); }
+  .result-source { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+  .source-drive { background: rgba(16,185,129,0.15); color: var(--green); }
+  .source-local { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .no-results { text-align: center; color: var(--text3); font-size: 13px; padding: 40px 0; line-height: 1.8; }
+  .searching-indicator { display: flex; align-items: center; gap: 8px; color: var(--text3); font-size: 13px; padding: 20px 0; justify-content: center; }
+  .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: flex-end; justify-content: center; }
+  .modal { background: var(--surface); border-radius: 20px 20px 0 0; padding: 24px 20px 36px; width: 100%; border-top: 1px solid var(--border); }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal h2 { font-size: 17px; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 14px; }
+  .modal label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 6px; margin-top: 4px; }
+  .modal input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 14px; color: var(--text); font-size: 13px; font-family: 'JetBrains Mono', monospace; outline: none; margin-bottom: 10px; display: block; }
+  .modal input:focus { border-color: var(--accent); }
+  .btn-primary { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: 10px; color: white; font-size: 15px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; font-weight: 600; margin-bottom: 8px; display: block; }
+  .btn-ghost { width: 100%; padding: 12px; background: none; border: 1px solid var(--border); border-radius: 10px; color: var(--text2); font-size: 14px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; display: block; }
+  .shimmer { background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 6px; height: 14px; margin-bottom: 8px; }
+  @keyframes shimmer { from{background-position:200% 0} to{background-position:-200% 0} }
+  .summary-list { list-style: none; }
+  .summary-list li { padding: 4px 0; display: flex; gap: 8px; font-size: 13px; }
+  .summary-list li::before { content: '▸'; color: var(--accent); flex-shrink: 0; }
+  .action-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 13px; }
+  .action-check { width: 18px; height: 18px; border: 1.5px solid var(--border); border-radius: 5px; flex-shrink: 0; cursor: pointer; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+  .action-check.checked { background: var(--accent); border-color: var(--accent); color: white; }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>⚙️ API 키 설정</h2>
+    <p>키는 이 브라우저에만 저장됩니다.</p>
+    <label>Anthropic 키 (회의록 요약)</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-...">
+    <label>OpenAI 키 (Whisper 음성인식)</label>
+    <input type="password" id="openaiKeyInput" placeholder="sk-proj-...">
+    <button class="btn-primary" id="saveBtn">저장하기</button>
+    <button class="btn-ghost" id="skipBtn">나중에</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>MeetNote</div>
+  <div class="header-right">
+    <span class="status-badge idle" id="statusBadge">대기중</span>
+    <button class="settings-btn" id="openModalBtn">⚙️</button>
+  </div>
+</header>
+
+<div class="main-tabs">
+  <button class="main-tab active" id="tab-rec">🎙️ 녹음</button>
+  <button class="main-tab" id="tab-search">🔍 파일검색</button>
+  <button class="main-tab" id="tab-summary">📋 회의록</button>
+</div>
+
+<div class="page active" id="page-rec">
+  <div class="rec-hero">
+    <button class="rec-btn idle" id="recBtn">🎙️</button>
+    <div class="timer" id="timer">00:00</div>
+    <div class="waveform" id="waveform">
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+      <div class="wave-bar" style="height:5px"></div>
+    </div>
+    <div class="rec-label" id="recLabel">버튼을 눌러 회의 녹음 시작</div>
+  </div>
+  <div class="transcript-area" id="transcriptArea">
+    <div class="empty-state" id="emptyState">
+      <div style="font-size:40px;opacity:0.3">🎙️</div>
+      녹음을 시작하면<br>30초마다 Whisper로 변환됩니다
+    </div>
+  </div>
+  <div class="summary-sheet">
+    <div class="summary-tabs">
+      <button class="sum-tab active" id="sumtab-summary">📋 요약</button>
+      <button class="sum-tab" id="sumtab-actions">✅ 액션</button>
+      <button class="sum-tab" id="sumtab-keywords">🔑 키워드</button>
+    </div>
+    <div class="summary-content" id="summaryContent"><span style="color:var(--text3)">아래 버튼을 눌러 AI 회의록을 생성하세요.</span></div>
+    <button class="generate-btn" id="generateBtn">✨ AI 회의록 생성</button>
+  </div>
+</div>
+
+<div class="page" id="page-search">
+  <div class="drive-banner">✅ Google Drive 연결됨</div>
+  <div class="search-box">
+    <div class="search-input-wrap">
+      <input type="text" id="searchInput" placeholder="파일명, 키워드 검색...">
+      <button id="searchBtn">🔍</button>
+    </div>
+    <div class="source-btns">
+      <button class="source-btn active" id="btn-drive">☁️ Drive</button>
+      <button class="source-btn active" id="btn-local">💻 로컬</button>
+    </div>
+  </div>
+  <div class="keyword-chips" id="keywordChips" style="display:none"><span class="chip-label">🤖 감지된 키워드</span></div>
+  <div class="search-results" id="searchResults">
+    <div class="no-results"><div style="font-size:36px;opacity:0.3;margin-bottom:10px">📂</div>검색어를 입력하거나<br>녹음 중 키워드가 감지되면<br>자동으로 검색됩니다</div>
+  </div>
+</div>
+
+<div class="page" id="page-summary">
+  <div style="padding:20px 16px;flex:1;overflow-y:auto">
+    <div style="font-size:15px;font-weight:600;margin-bottom:16px;color:var(--text2)">📋 회의록</div>
+    <div id="fullSummaryContent"><div style="color:var(--text3);font-size:14px;text-align:center;margin-top:60px;line-height:1.8"><div style="font-size:36px;opacity:0.3;margin-bottom:12px">📝</div>녹음 후 AI 회의록 생성을<br>눌러주세요</div></div>
+  </div>
+  <div style="padding:16px;border-top:1px solid var(--border)">
+    <button class="generate-btn" id="generateBtn2" style="margin:0;width:100%">✨ AI 회의록 생성</button>
+  </div>
+</div>
+
+<script>
+var apiKey = '';
+var openaiKey = '';
+var isRecording = false;
+var mediaRecorder = null;
+var audioChunks = [];
+var whisperTimer = null;
+var timerInterval = null;
+var timerSeconds = 0;
+var waveInterval = null;
+var allTranscript = [];
+var detectedKeywords = new Set();
+var activeSumTab = 'summary';
+var searchSources = { drive: true, local: true };
+var autoSearchTimer = null;
+var summaryData = null;
+
+window.addEventListener('load', function() {
+  var saved = localStorage.getItem('mnApiKey');
+  var savedOai = localStorage.getItem('mnOpenaiKey');
+  if (saved) { apiKey = saved; document.getElementById('apiKeyInput').value = saved; }
+  if (savedOai) { openaiKey = savedOai; document.getElementById('openaiKeyInput').value = savedOai; }
+  if (!saved && !savedOai) {
+    document.getElementById('apiModal').style.display = 'flex';
+  }
+});
+
+document.getElementById('saveBtn').addEventListener('click', function() {
+  var v = document.getElementById('apiKeyInput').value.trim();
+  var o = document.getElementById('openaiKeyInput').value.trim();
+  if (v) { apiKey = v; localStorage.setItem('mnApiKey', v); }
+  if (o) { openaiKey = o; localStorage.setItem('mnOpenaiKey', o); }
+  document.getElementById('apiModal').style.display = 'none';
+});
+
+document.getElementById('skipBtn').addEventListener('click', function() {
+  document.getElementById('apiModal').style.display = 'none';
+});
+
+document.getElementById('openModalBtn').addEventListener('click', function() {
+  document.getElementById('apiModal').style.display = 'flex';
+});
+
+document.getElementById('tab-rec').addEventListener('click', function() { switchPage('rec', this); });
+document.getElementById('tab-search').addEventListener('click', function() { switchPage('search', this); });
+document.getElementById('tab-summary').addEventListener('click', function() { switchPage('summary', this); });
+
+function switchPage(page, btn) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.main-tab').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('page-' + page).classList.add('active');
+  btn.classList.add('active');
+}
+
+document.getElementById('sumtab-summary').addEventListener('click', function() { switchSumTab('summary', this); });
+document.getElementById('sumtab-actions').addEventListener('click', function() { switchSumTab('actions', this); });
+document.getElementById('sumtab-keywords').addEventListener('click', function() { switchSumTab('keywords', this); });
+
+function switchSumTab(tab, btn) {
+  activeSumTab = tab;
+  document.querySelectorAll('.sum-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderSum(tab);
+}
+
+document.getElementById('recBtn').addEventListener('click', function() {
+  if (isRecording) stopRecording();
+  else startRecording();
+});
+
+function startRecording() {
+  if (!openaiKey) {
+    alert('OpenAI API 키를 먼저 입력해주세요. ⚙️ 버튼을 눌러주세요.');
+    document.getElementById('apiModal').style.display = 'flex';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = function() {
+      if (audioChunks.length > 0) {
+        var blob = new Blob(audioChunks, { type: 'audio/webm' });
+        audioChunks = [];
+        transcribeWithWhisper(blob);
+      }
+      if (isRecording) {
+        mediaRecorder.start();
+        whisperTimer = setTimeout(function() {
+          if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+        }, 30000);
+      }
+    };
+
+    mediaRecorder.start();
+    whisperTimer = setTimeout(function() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    }, 30000);
+
+    isRecording = true;
+    document.getElementById('recBtn').className = 'rec-btn recording';
+    document.getElementById('recBtn').textContent = '⏹️';
+    document.getElementById('recLabel').textContent = '녹음 중... 30초마다 변환됩니다';
+    document.getElementById('statusBadge').className = 'status-badge recording';
+    document.getElementById('statusBadge').textContent = '● REC';
+    document.getElementById('emptyState').style.display = 'none';
+
+    timerInterval = setInterval(function() {
+      timerSeconds++;
+      document.getElementById('timer').textContent = fmt(timerSeconds);
+    }, 1000);
+
+    waveInterval = setInterval(function() {
+      document.querySelectorAll('.wave-bar').forEach(function(b) {
+        b.style.height = (Math.random() * 28 + 4) + 'px';
+      });
+    }, 120);
+
+  }).catch(function() {
+    alert('마이크 접근 권한이 필요합니다.');
+  });
+}
+
+function stopRecording() {
+  isRecording = false;
+  clearTimeout(whisperTimer);
+  clearInterval(timerInterval);
+  clearInterval(waveInterval);
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(function(t) { t.stop(); });
+  }
+  mediaRecorder = null;
+  document.getElementById('recBtn').className = 'rec-btn idle';
+  document.getElementById('recBtn').textContent = '🎙️';
+  document.getElementById('recLabel').textContent = '녹음 완료 · ' + fmt(timerSeconds);
+  document.getElementById('statusBadge').className = 'status-badge idle';
+  document.getElementById('statusBadge').textContent = '완료';
+  document.querySelectorAll('.wave-bar').forEach(function(b) { b.style.height = '5px'; });
+}
+
+function transcribeWithWhisper(blob) {
+  var formData = new FormData();
+  formData.append('file', blob, 'audio.webm');
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'ko');
+  fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + openaiKey },
+    body: formData
+  }).then(function(res) { return res.json(); }).then(function(data) {
+    if (data.text && data.text.trim()) {
+      addEntry(data.text.trim());
+      extractKeywords(data.text.trim());
+    }
+  }).catch(function(e) { console.error('Whisper error:', e); });
+}
+
+function addEntry(text) {
+  var area = document.getElementById('transcriptArea');
+  var div = document.createElement('div');
+  div.className = 'transcript-entry';
+  div.innerHTML = '<div class="entry-time">' + fmt(timerSeconds) + '</div><div class="entry-text">' + highlightKw(text) + '</div>';
+  area.appendChild(div);
+  allTranscript.push({ time: timerSeconds, text: text });
+  area.scrollTop = area.scrollHeight;
+}
+
+function highlightKw(text) {
+  return text.replace(/([가-힣a-zA-Z]{2,})/g, function(w) {
+    return isKw(w) ? '<span class="keyword-highlight">' + w + '</span>' : w;
+  });
+}
+
+var STOPWORDS = ['그리고','하지만','그래서','그런데','이것','저것','입니다','합니다','했습니다','있습니다','없습니다','됩니다','가장','정말','아직','이미','함께','때문에','위해서','대해서','거의','보다','같은','우리','저희','여기','저기','지금','오늘','내일','어제','조금','많이','나중','먼저','다음','이번','그냥','뭔가','이렇게','그렇게'];
+
+function isKw(w) { return w.length >= 2 && STOPWORDS.indexOf(w) === -1; }
+
+function extractKeywords(text) {
+  var words = (text.match(/[가-힣a-zA-Z]{2,}/g) || []).filter(function(w) { return isKw(w) && !detectedKeywords.has(w); });
+  words.forEach(function(kw) { detectedKeywords.add(kw); addChip(kw); });
+  if (words.length > 0) {
+    clearTimeout(autoSearchTimer);
+    autoSearchTimer = setTimeout(function() {
+      var kw = words[words.length - 1];
+      document.getElementById('searchInput').value = kw;
+      triggerSearch(kw);
+    }, 1000);
+  }
+}
+
+function addChip(kw) {
+  var c = document.getElementById('keywordChips');
+  c.style.display = 'flex';
+  var chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.textContent = kw;
+  chip.addEventListener('click', function() { chip.classList.toggle('active'); searchFromKw(kw); });
+  c.appendChild(chip);
+}
+
+function searchFromKw(kw) {
+  document.getElementById('searchInput').value = kw;
+  switchPage('search', document.getElementById('tab-search'));
+  triggerSearch(kw);
+}
+
+document.getElementById('btn-drive').addEventListener('click', function() {
+  searchSources.drive = !searchSources.drive;
+  this.classList.toggle('active', searchSources.drive);
+});
+document.getElementById('btn-local').addEventListener('click', function() {
+  searchSources.local = !searchSources.local;
+  this.classList.toggle('active', searchSources.local);
+});
+document.getElementById('searchBtn').addEventListener('click', function() { triggerSearch(); });
+document.getElementById('searchInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') triggerSearch(); });
+
+function triggerSearch(override) {
+  var q = override || document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  var div = document.getElementById('searchResults');
+  div.innerHTML = '<div class="searching-indicator"><div class="spin"></div>"' + q + '" 검색 중...</div>';
+  var results = [];
+  var pending = 0;
+  if (searchSources.drive) {
+    pending++;
+    searchDrive(q).then(function(dr) {
+      results = results.concat(dr);
+      pending--;
+      if (pending === 0) {
+        if (searchSources.local) results = results.concat(fakeLocal(q));
+        renderResults(results, q);
+      }
+    });
+  }
+  if (!searchSources.drive) {
+    if (searchSources.local) results = results.concat(fakeLocal(q));
+    renderResults(results, q);
+  }
+}
+
+function searchDrive(q) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1000,
+      system: 'Search Google Drive for files matching the query. Return ONLY a JSON array, no markdown: [{name, id, mimeType, modifiedTime}]. Max 5. If none, return [].',
+      messages: [{ role: 'user', content: 'Search for: "' + q + '"' }],
+      mcp_servers: [{ type: 'url', url: 'https://drivemcp.googleapis.com/mcp/v1', name: 'google-drive' }]
+    })
+  }).then(function(res) { return res.json(); }).then(function(data) {
+    var text = '';
+    if (data.content) {
+      for (var i = 0; i < data.content.length; i++) {
+        if (data.content[i].type === 'text') { text = data.content[i].text; break; }
+      }
+    }
+    var match = text.replace(/```json|```/g, '').match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    return JSON.parse(match[0]).map(function(f) {
+      return { name: f.name || 'Untitled', meta: driveType(f.mimeType), date: f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('ko-KR') : '', source: 'drive', id: f.id };
+    });
+  }).catch(function() { return []; });
+}
+
+function driveType(mime) {
+  if (!mime) return '📁 파일';
+  if (mime.indexOf('document') > -1) return '📄 Google Docs';
+  if (mime.indexOf('spreadsheet') > -1) return '📊 Sheets';
+  if (mime.indexOf('presentation') > -1) return '📑 Slides';
+  if (mime.indexOf('pdf') > -1) return '📕 PDF';
+  if (mime.indexOf('image') > -1) return '🖼️ 이미지';
+  if (mime.indexOf('video') > -1) return '🎬 동영상';
+  if (mime.indexOf('wordprocessingml') > -1) return '📝 Word';
+  return '📁 파일';
+}
+
+function fakeLocal(q) {
+  var all = [
+    { name: q + '_회의록.docx', meta: '📝 Word', date: '2024.01.15', source: 'local' },
+    { name: q + '_발표.pptx', meta: '📑 PPT', date: '2024.01.10', source: 'local' }
+  ];
+  return all.slice(0, Math.floor(Math.random() * 3));
+}
+
+function renderResults(results, q) {
+  var div = document.getElementById('searchResults');
+  if (!results.length) {
+    div.innerHTML = '<div class="no-results"><div style="font-size:28px;opacity:0.3;margin-bottom:8px">🔍</div>"' + q + '" 파일을 찾지 못했습니다</div>';
+    return;
+  }
+  div.innerHTML = '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">' + results.length + '개 파일 발견</div>';
+  results.forEach(function(r) {
+    var el = document.createElement('div');
+    el.className = 'result-item';
+    var icon = r.meta ? r.meta.split(' ')[0] : '📁';
+    var src = r.source === 'drive' ? '<span class="result-source source-drive">☁️ Drive</span>' : '<span class="result-source source-local">💻 Local</span>';
+    el.innerHTML = '<div class="result-name"><span>' + icon + '</span><span style="flex:1;word-break:break-all">' + r.name + '</span>' + src + '</div><div class="result-meta">' + r.meta + (r.date ? ' · ' + r.date : '') + '</div>';
+    if (r.id) {
+      (function(id) { el.addEventListener('click', function() { window.open('https://drive.google.com/file/d/' + id + '/view', '_blank'); }); })(r.id);
+    }
+    div.appendChild(el);
+  });
+}
+
+document.getElementById('generateBtn').addEventListener('click', generateSummary);
+document.getElementById('generateBtn2').addEventListener('click', generateSummary);
+
+function generateSummary() {
+  if (!allTranscript.length) { alert('녹음된 내용이 없습니다.'); return; }
+  if (!apiKey) { document.getElementById('apiModal').style.display = 'flex'; return; }
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('generateBtn').textContent = '⏳ 생성 중...';
+  document.getElementById('summaryContent').innerHTML = '<div class="shimmer"></div><div class="shimmer" style="width:75%"></div>';
+  var fullText = allTranscript.map(function(e) { return '[' + fmt(e.time) + '] ' + e.text; }).join('\n');
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1000,
+      system: '회의록 전문가입니다. JSON만 반환하세요: {"summary":["요약 3~5개"],"actions":["액션 3~5개"],"keywords":["키워드 5~8개"]}',
+      messages: [{ role: 'user', content: '회의 내용:\n' + fullText }]
+    })
+  }).then(function(res) { return res.json(); }).then(function(data) {
+    var text = data.content && data.content[0] ? data.content[0].text : '';
+    var match = text.replace(/```json|```/g, '').match(/\{[\s\S]*\}/);
+    if (match) {
+      summaryData = JSON.parse(match[0]);
+      renderSum(activeSumTab);
+      renderFullSummary();
+    }
+  }).catch(function() {
+    document.getElementById('summaryContent').innerHTML = '<span style="color:var(--red)">오류 발생. API 키를 확인하세요.</span>';
+  }).finally(function() {
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('generateBtn').textContent = '✨ AI 회의록 재생성';
+  });
+}
+
+function renderSum(tab) {
+  var c = document.getElementById('summaryContent');
+  if (!summaryData) { c.innerHTML = '<span style="color:var(--text3)">AI 회의록을 먼저 생성해주세요.</span>'; return; }
+  if (tab === 'summary') {
+    c.innerHTML = '<ul class="summary-list">' + summaryData.summary.map(function(s) { return '<li>' + s + '</li>'; }).join('') + '</ul>';
+  } else if (tab === 'actions') {
+    c.innerHTML = summaryData.actions.map(function(a) { return '<div class="action-item"><div class="action-check" onclick="this.classList.toggle(\'checked\');this.textContent=this.classList.contains(\'checked\')?\'✓\':\'\'"></div><span>' + a + '</span></div>'; }).join('');
+  } else {
+    c.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px">' + summaryData.keywords.map(function(k) { return '<span class="chip active">' + k + '</span>'; }).join('') + '</div>';
+  }
+}
+
+function renderFullSummary() {
+  if (!summaryData) return;
+  var c = document.getElementById('fullSummaryContent');
+  c.innerHTML = '<div style="margin-bottom:20px"><div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:10px">📋 핵심 요약</div><ul class="summary-list">' + summaryData.summary.map(function(s){return '<li>'+s+'</li>';}).join('') + '</ul></div><div style="margin-bottom:20px"><div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:10px">✅ 액션 아이템</div>' + summaryData.actions.map(function(a){return '<div class="action-item"><div class="action-check" onclick="this.classList.toggle(\'checked\');this.textContent=this.classList.contains(\'checked\')?\'✓\':\'\'"></div><span>'+a+'</span></div>';}).join('') + '</div><div><div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:10px">🔑 키워드</div><div style="display:flex;flex-wrap:wrap;gap:6px">' + summaryData.keywords.map(function(k){return '<span class="chip active">'+k+'</span>';}).join('') + '</div></div>';
+}
+
+function fmt(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+</script>
+</body>
+</html>
 
