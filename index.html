@@ -1,1 +1,600 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeetNote — AI 회의록</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1e2330;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #475569;
+    --highlight: rgba(59,130,246,0.15);
+  }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-dot {
+    width: 10px; height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+  .status-badge.idle { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+  .status-badge.recording { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .status-badge.processing { background: rgba(59,130,246,0.15); color: var(--accent); border: 1px solid rgba(59,130,246,0.3); }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    flex: 1;
+    height: calc(100vh - 57px);
+    overflow: hidden;
+  }
+
+  /* Left Panel */
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  /* Recording Control Bar */
+  .control-bar {
+    padding: 20px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .rec-btn {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .rec-btn.idle {
+    background: var(--accent);
+    box-shadow: 0 0 20px rgba(59,130,246,0.4);
+  }
+
+  .rec-btn.recording {
+    background: var(--red);
+    box-shadow: 0 0 20px rgba(239,68,68,0.5);
+    animation: rec-pulse 1.5s infinite;
+  }
+
+  @keyframes rec-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(239,68,68,0.5); }
+    50% { box-shadow: 0 0 35px rgba(239,68,68,0.8); }
+  }
+
+  .rec-btn:hover { transform: scale(1.06); }
+
+  .rec-info {
+    flex: 1;
+  }
+
+  .rec-title {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+
+  .rec-subtitle {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--accent2);
+    letter-spacing: 2px;
+  }
+
+  .waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 32px;
+  }
+
+  .wave-bar {
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: height 0.1s;
+    opacity: 0.7;
+  }
+
+  /* Transcript Area */
+  .transcript-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    scroll-behavior: smooth;
+  }
+
+  .transcript-area::-webkit-scrollbar { width: 6px; }
+  .transcript-area::-webkit-scrollbar-track { background: transparent; }
+  .transcript-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text3);
+    gap: 12px;
+    text-align: center;
+  }
+
+  .empty-icon { font-size: 48px; opacity: 0.4; }
+  .empty-text { font-size: 14px; line-height: 1.6; }
+
+  .transcript-entry {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+    animation: fade-in 0.3s ease;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .transcript-entry:hover { border-color: var(--accent); }
+
+  .entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .entry-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .entry-text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .keyword-highlight {
+    background: rgba(59,130,246,0.25);
+    color: var(--accent2);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .keyword-highlight:hover { background: rgba(59,130,246,0.45); }
+
+  /* Bottom: Summary */
+  .summary-bar {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .summary-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .summary-content {
+    padding: 16px 20px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text2);
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  .summary-content .loading-dots::after {
+    content: '...';
+    animation: dots 1.2s infinite;
+  }
+< truncated lines 301-986 >
+  const newKeywords = words.filter(w => isKeyword(w) && !detectedKeywords.has(w));
+
+  newKeywords.forEach(kw => {
+    detectedKeywords.add(kw);
+    addKeywordChip(kw);
+  });
+
+  // Auto search with a debounce
+  if (newKeywords.length > 0) {
+    clearTimeout(autoSearchTimer);
+    autoSearchTimer = setTimeout(() => {
+      const lastKeyword = newKeywords[newKeywords.length - 1];
+      document.getElementById('searchInput').value = lastKeyword;
+      triggerSearch(lastKeyword);
+    }, 800);
+  }
+}
+
+function addKeywordChip(keyword) {
+  const container = document.getElementById('keywordChips');
+  container.style.display = 'flex';
+
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.textContent = keyword;
+  chip.onclick = () => {
+    chip.classList.toggle('active');
+    searchFromKeyword(keyword);
+  };
+  container.appendChild(chip);
+}
+
+function searchFromKeyword(keyword) {
+  document.getElementById('searchInput').value = keyword;
+  triggerSearch(keyword);
+}
+
+// ─── File Search ────────────────────────────────────────
+function toggleSource(source) {
+  searchSources[source] = !searchSources[source];
+  document.getElementById('btn-' + source).classList.toggle('active', searchSources[source]);
+}
+
+function handleSearchKey(e) {
+  if (e.key === 'Enter') triggerSearch();
+}
+
+async function triggerSearch(overrideQuery) {
+  const query = overrideQuery || document.getElementById('searchInput').value.trim();
+  if (!query) return;
+
+  const resultsDiv = document.getElementById('searchResults');
+  resultsDiv.innerHTML = `
+    <div class="searching-indicator">
+      <div class="spin"></div> "${query}" 검색 중...
+    </div>
+  `;
+
+  const results = [];
+
+  // Drive search
+  if (searchSources.drive) {
+    const driveResults = await searchGoogleDrive(query);
+    results.push(...driveResults);
+  }
+
+  // Local (simulated)
+  if (searchSources.local) {
+    const localResults = simulateLocalSearch(query);
+    results.push(...localResults);
+  }
+
+  renderResults(results, query);
+}
+
+async function searchGoogleDrive(query) {
+  // Call Claude with Google Drive MCP
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: `You are a file search assistant. When given a search query, search Google Drive for files matching that query. 
+Return ONLY a JSON array (no markdown, no explanation) with objects: [{name, id, mimeType, modifiedTime}]. 
+Max 5 results. If no results found, return [].`,
+        messages: [{ role: "user", content: `Search Google Drive for files related to: "${query}"` }],
+        mcp_servers: [{ type: "url", url: "https://drivemcp.googleapis.com/mcp/v1", name: "google-drive" }]
+      })
+    });
+
+    if (!response.ok) throw new Error('API error');
+    const data = await response.json();
+
+    // Parse response
+    const textBlock = data.content?.find(c => c.type === 'text');
+    if (!textBlock) return [];
+
+    let jsonText = textBlock.text.replace(/```json|```/g, '').trim();
+    // Find JSON array in text
+    const match = jsonText.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+
+    const files = JSON.parse(match[0]);
+    return files.map(f => ({
+      name: f.name || f.title || 'Untitled',
+      meta: formatDriveType(f.mimeType),
+      date: f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('ko-KR') : '',
+      source: 'drive',
+      id: f.id
+    }));
+  } catch (e) {
+    console.error('Drive search error:', e);
+    return [];
+  }
+}
+
+function formatDriveType(mime) {
+  const map = {
+    'application/vnd.google-apps.document': '📄 Google Docs',
+    'application/vnd.google-apps.spreadsheet': '📊 Google Sheets',
+    'application/vnd.google-apps.presentation': '📑 Google Slides',
+    'application/pdf': '📕 PDF',
+    'image/': '🖼️ 이미지',
+    'video/': '🎬 동영상',
+    'audio/': '🎵 오디오',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml': '📝 Word',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml': '📊 Excel',
+  };
+  for (const [k, v] of Object.entries(map)) {
+    if (mime?.includes(k)) return v;
+  }
+  return '📁 파일';
+}
+
+function simulateLocalSearch(query) {
+  // Simulate local file search based on keywords
+  const fakeFiles = [
+    { name: `${query}_회의록_2024.docx`, meta: '📝 Word 문서', date: '2024.01.15', source: 'local' },
+    { name: `${query}_발표자료.pptx`, meta: '📑 PowerPoint', date: '2024.01.10', source: 'local' },
+    { name: `${query}_데이터분석.xlsx`, meta: '📊 Excel', date: '2024.01.08', source: 'local' },
+  ];
+  // Randomly return 0-2 results to simulate real behavior
+  const count = Math.floor(Math.random() * 3);
+  return fakeFiles.slice(0, count);
+}
+
+function renderResults(results, query) {
+  const div = document.getElementById('searchResults');
+
+  if (results.length === 0) {
+    div.innerHTML = `<div class="no-results">
+      <div style="font-size:28px; margin-bottom:8px; opacity:0.4">🔍</div>
+      "<strong>${query}</strong>"에 대한 파일을 찾지 못했습니다
+    </div>`;
+    return;
+  }
+
+  div.innerHTML = `<div style="font-size:11px; color:var(--text3); margin-bottom:10px; font-family:'JetBrains Mono',monospace;">${results.length}개 파일 발견</div>`;
+
+  results.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    item.innerHTML = `
+      <div class="result-name">
+        <span>${r.meta?.split(' ')[0] || '📁'}</span>
+        <span>${r.name}</span>
+        <span class="result-source ${r.source === 'drive' ? 'source-drive' : 'source-local'}">
+          ${r.source === 'drive' ? '☁️ Drive' : '💻 Local'}
+        </span>
+      </div>
+      <div class="result-meta">${r.meta || ''} ${r.date ? '· ' + r.date : ''}</div>
+    `;
+    if (r.id) {
+      item.onclick = () => window.open(`https://drive.google.com/file/d/${r.id}/view`, '_blank');
+    }
+    div.appendChild(item);
+  });
+}
+
+// ─── Summary Generation ─────────────────────────────────
+async function generateSummary() {
+  if (allTranscript.length === 0) {
+    alert('녹음된 내용이 없습니다. 먼저 회의를 녹음해주세요.');
+    return;
+  }
+
+  if (!apiKey) {
+    document.getElementById('apiModal').classList.add('show');
+    return;
+  }
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 생성 중...';
+
+  const fullText = allTranscript.map(e => `[${formatTime(e.time)}] ${e.text}`).join('\n');
+
+  const content = document.getElementById('summaryContent');
+  content.innerHTML = '<div class="shimmer"></div><div class="shimmer" style="width:80%"></div><div class="shimmer" style="width:60%"></div>';
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: `당신은 회의록 작성 전문가입니다. 회의 내용을 분석하여 JSON 형식으로만 응답하세요. 다른 텍스트 없이 순수 JSON만 반환하세요.
+형식: {
+  "summary": ["핵심 내용 요약 3~5개"],
+  "actions": ["액션 아이템 3~5개"],
+  "keywords": ["핵심 키워드 5~8개"]
+}`,
+        messages: [{
+          role: "user",
+          content: `다음 회의 내용을 분석해주세요:\n\n${fullText}`
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    renderSummaryResult(parsed);
+
+  } catch (e) {
+    content.innerHTML = '<span style="color:var(--red)">오류가 발생했습니다. API 키를 확인해주세요.</span>';
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '✨ AI 회의록 재생성';
+}
+
+let summaryData = null;
+
+function renderSummaryResult(data) {
+  summaryData = data;
+  showTab(activeTab);
+}
+
+function switchTab(tab, btn) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  showTab(tab);
+}
+
+function showTab(tab) {
+  const content = document.getElementById('summaryContent');
+  if (!summaryData) {
+    content.innerHTML = '<span style="color:var(--text3); font-size:13px;">AI 회의록을 먼저 생성해주세요.</span>';
+    return;
+  }
+
+  if (tab === 'summary') {
+    content.innerHTML = '<ul class="summary-list">' +
+      (summaryData.summary || []).map(s => `<li>${s}</li>`).join('') +
+      '</ul>';
+  } else if (tab === 'actions') {
+    content.innerHTML = '<div class="action-items">' +
+      (summaryData.actions || []).map(a => `
+        <div class="action-item">
+          <div class="action-check" onclick="toggleCheck(this)"></div>
+          <span>${a}</span>
+        </div>
+      `).join('') +
+      '</div>';
+  } else if (tab === 'keywords') {
+    content.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+      (summaryData.keywords || []).map(k => `
+        <span class="chip active" onclick="searchFromKeyword('${k}')">${k}</span>
+      `).join('') +
+      '</div><div style="font-size:11px;color:var(--text3);margin-top:10px;">클릭하여 파일 검색</div>';
+  }
+}
+
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+  el.textContent = el.classList.contains('checked') ? '✓' : '';
+}
+
+// ─── Helpers ────────────────────────────────────────────
+function formatTime(secs) {
+  const m = String(Math.floor(secs / 60)).padStart(2, '0');
+  const s = String(secs % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function formatTimerDisplay(secs) {
+  return formatTime(secs);
+}
+</script>
+</body>
+</html>
