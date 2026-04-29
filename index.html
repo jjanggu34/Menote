@@ -298,7 +298,692 @@
     content: '...';
     animation: dots 1.2s infinite;
   }
-< truncated lines 301-986 >
+
+  @keyframes dots {
+    0% { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
+  }
+
+  .generate-btn {
+    margin: 0 20px 16px;
+    padding: 9px 18px;
+    background: var(--highlight);
+    border: 1px solid rgba(59,130,246,0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 40px);
+    justify-content: center;
+  }
+
+  .generate-btn:hover { background: rgba(59,130,246,0.25); }
+  .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Right Panel */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text2);
+  }
+
+  /* Search Box */
+  .search-box {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-input-wrap input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 36px 9px 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input-wrap input:focus { border-color: var(--accent); }
+
+  .search-input-wrap button {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px;
+    transition: color 0.15s;
+  }
+
+  .search-input-wrap button:hover { color: var(--accent); }
+
+  .search-source-btns {
+    display: flex;
+    gap: 6px;
+  }
+
+  .source-btn {
+    flex: 1;
+    padding: 6px;
+    font-size: 11px;
+    font-family: 'Noto Sans KR', sans-serif;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .source-btn.active {
+    border-color: var(--accent);
+    background: var(--highlight);
+    color: var(--accent);
+  }
+
+  /* Auto-search keyword chips */
+  .keyword-chips {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip-label {
+    font-size: 11px;
+    color: var(--text3);
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .chip {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .chip:hover, .chip.active {
+    border-color: var(--accent);
+    background: var(--highlight);
+    color: var(--accent);
+  }
+
+  /* Search Results */
+  .search-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  .search-results::-webkit-scrollbar { width: 4px; }
+  .search-results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .result-item {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    animation: fade-in 0.25s ease;
+  }
+
+  .result-item:hover { border-color: var(--accent); background: var(--highlight); }
+
+  .result-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .result-meta {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .result-source {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .source-drive { background: rgba(16,185,129,0.15); color: var(--green); }
+  .source-local { background: rgba(245,158,11,0.15); color: var(--yellow); }
+
+  .file-icon { font-size: 16px; }
+
+  .no-results {
+    text-align: center;
+    color: var(--text3);
+    font-size: 13px;
+    padding: 30px 0;
+  }
+
+  .searching-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text3);
+    font-size: 12px;
+    padding: 10px 0;
+    justify-content: center;
+  }
+
+  .spin {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* API Key Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 420px;
+    max-width: 90vw;
+  }
+
+  .modal h2 { font-size: 18px; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+
+  .modal input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.15s;
+  }
+
+  .modal input:focus { border-color: var(--accent); }
+
+  .modal-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .btn-primary {
+    padding: 9px 20px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    font-weight: 500;
+  }
+
+  .btn-primary:hover { opacity: 0.88; }
+
+  .btn-ghost {
+    padding: 9px 20px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text2);
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .settings-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+
+  .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* GDRIVE Connect banner */
+  .connect-banner {
+    padding: 12px 16px;
+    background: rgba(16,185,129,0.08);
+    border-bottom: 1px solid rgba(16,185,129,0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .connect-banner p { font-size: 12px; color: var(--green); flex: 1; }
+
+  .connect-btn {
+    font-size: 11px;
+    padding: 5px 12px;
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 6px;
+    color: var(--green);
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+
+  .connect-btn:hover { background: rgba(16,185,129,0.3); }
+
+  /* Loading shimmer */
+  .shimmer {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    border-radius: 6px;
+    height: 14px;
+    margin-bottom: 6px;
+  }
+
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  .summary-list { list-style: none; }
+  .summary-list li { padding: 4px 0; display: flex; gap: 8px; }
+  .summary-list li::before { content: '▸'; color: var(--accent); flex-shrink: 0; }
+
+  .action-items { margin-top: 10px; }
+  .action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .action-check {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin-top: 2px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+
+  .action-check.checked { background: var(--accent); border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- API Key Modal -->
+<div class="modal-overlay show" id="apiModal">
+  <div class="modal">
+    <h2>⚙️ API 키 설정</h2>
+    <p>회의록 요약 및 AI 기능을 사용하려면 Anthropic API 키가 필요합니다.<br>키는 브라우저 내 메모리에만 저장되며 서버로 전송되지 않습니다.</p>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="skipApiKey()">나중에</button>
+      <button class="btn-primary" onclick="saveApiKey()">저장 & 시작</button>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    MeetNote
+  </div>
+  <div class="header-right">
+    <span class="status-badge idle" id="statusBadge">대기중</span>
+    <button class="settings-btn" onclick="document.getElementById('apiModal').classList.add('show')">⚙️ API 키</button>
+  </div>
+</header>
+
+<!-- Main Layout -->
+<div class="layout">
+
+  <!-- Left: Transcript + Summary -->
+  <div class="left-panel">
+
+    <!-- Recording Controls -->
+    <div class="control-bar">
+      <button class="rec-btn idle" id="recBtn" onclick="toggleRecording()">🎙️</button>
+      <div class="rec-info">
+        <div class="rec-title" id="recTitle">녹음 시작</div>
+        <div class="rec-subtitle" id="recSubtitle">버튼을 눌러 회의를 시작하세요</div>
+      </div>
+      <div class="timer" id="timer">00:00</div>
+      <div class="waveform" id="waveform">
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:6px"></div>
+        <div class="wave-bar" style="height:6px"></div>
+      </div>
+    </div>
+
+    <!-- Transcript -->
+    <div class="transcript-area" id="transcriptArea">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🎙️</div>
+        <div class="empty-text">
+          녹음을 시작하면 실시간으로<br>회의 내용이 여기에 표시됩니다.<br><br>
+          <span style="color:var(--accent); font-size:12px;">감지된 키워드로 자동 파일 검색</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-bar">
+      <div class="summary-tabs">
+        <button class="tab-btn active" onclick="switchTab('summary', this)">📋 요약</button>
+        <button class="tab-btn" onclick="switchTab('actions', this)">✅ 액션 아이템</button>
+        <button class="tab-btn" onclick="switchTab('keywords', this)">🔑 키워드</button>
+      </div>
+      <div class="summary-content" id="summaryContent">
+        <span style="color:var(--text3); font-size:13px;">아래 버튼을 눌러 AI 회의록을 생성하세요.</span>
+      </div>
+      <button class="generate-btn" id="generateBtn" onclick="generateSummary()">
+        ✨ AI 회의록 생성
+      </button>
+    </div>
+  </div>
+
+  <!-- Right: File Search -->
+  <div class="right-panel">
+    <div class="panel-header">
+      🔍 파일 검색
+    </div>
+
+    <!-- Google Drive connected banner -->
+    <div class="connect-banner" id="driveBanner">
+      <p>✅ Google Drive 연결됨</p>
+    </div>
+
+    <!-- Search Input -->
+    <div class="search-box">
+      <div class="search-input-wrap">
+        <input type="text" id="searchInput" placeholder="파일명, 키워드 검색..." onkeydown="handleSearchKey(event)" />
+        <button onclick="triggerSearch()">🔍</button>
+      </div>
+      <div class="search-source-btns">
+        <button class="source-btn active" id="btn-drive" onclick="toggleSource('drive')">☁️ Drive</button>
+        <button class="source-btn active" id="btn-local" onclick="toggleSource('local')">💻 로컬</button>
+      </div>
+    </div>
+
+    <!-- Auto-detected Keywords -->
+    <div class="keyword-chips" id="keywordChips" style="display:none">
+      <span class="chip-label">🤖 감지된 키워드 (클릭하여 검색)</span>
+    </div>
+
+    <!-- Results -->
+    <div class="search-results" id="searchResults">
+      <div class="no-results" style="padding-top: 40px;">
+        <div style="font-size:36px; margin-bottom:12px; opacity:0.4">📂</div>
+        검색어를 입력하거나<br>녹음을 시작하면 자동 검색됩니다
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ──────────────────────────────────────────────
+let apiKey = '';
+let isRecording = false;
+let recognition = null;
+let timerInterval = null;
+let timerSeconds = 0;
+let waveInterval = null;
+let allTranscript = [];
+let detectedKeywords = new Set();
+let activeTab = 'summary';
+let searchSources = { drive: true, local: true };
+let autoSearchTimer = null;
+
+// ─── API Key ────────────────────────────────────────────
+function saveApiKey() {
+  const input = document.getElementById('apiKeyInput').value.trim();
+  if (input) apiKey = input;
+  document.getElementById('apiModal').classList.remove('show');
+}
+
+function skipApiKey() {
+  document.getElementById('apiModal').classList.remove('show');
+}
+
+// ─── Recording ──────────────────────────────────────────
+function toggleRecording() {
+  if (isRecording) stopRecording();
+  else startRecording();
+}
+
+function startRecording() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome을 사용해주세요.');
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ko-KR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  let interimDiv = null;
+
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const result = e.results[i];
+      if (result.isFinal) {
+        const text = result[0].transcript.trim();
+        if (text) {
+          addTranscriptEntry(text);
+          extractAndSearchKeywords(text);
+          if (interimDiv) { interimDiv.remove(); interimDiv = null; }
+        }
+      } else {
+        interim += result[0].transcript;
+      }
+    }
+    // Show interim
+    if (interim) {
+      if (!interimDiv) {
+        interimDiv = document.createElement('div');
+        interimDiv.className = 'transcript-entry';
+        interimDiv.style.opacity = '0.5';
+        interimDiv.style.borderStyle = 'dashed';
+        document.getElementById('transcriptArea').appendChild(interimDiv);
+      }
+      interimDiv.innerHTML = `
+        <div class="entry-meta">
+          <span class="entry-time">${formatTime(timerSeconds)}</span>
+          <span style="font-size:11px; color:var(--text3)">인식 중...</span>
+        </div>
+        <div class="entry-text">${interim}</div>
+      `;
+      scrollTranscript();
+    }
+  };
+
+  recognition.onerror = (e) => {
+    console.error('STT Error:', e.error);
+    if (e.error === 'no-speech') return;
+    stopRecording();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) recognition.start(); // restart if still recording
+  };
+
+  recognition.start();
+  isRecording = true;
+
+  // UI
+  document.getElementById('recBtn').className = 'rec-btn recording';
+  document.getElementById('recBtn').textContent = '⏹️';
+  document.getElementById('recTitle').textContent = '녹음 중';
+  document.getElementById('recSubtitle').textContent = '말씀하세요... 자동으로 텍스트 변환됩니다';
+  document.getElementById('statusBadge').className = 'status-badge recording';
+  document.getElementById('statusBadge').textContent = '● REC';
+  document.getElementById('emptyState').style.display = 'none';
+
+  // Timer
+  timerInterval = setInterval(() => {
+    timerSeconds++;
+    document.getElementById('timer').textContent = formatTimerDisplay(timerSeconds);
+  }, 1000);
+
+  // Waveform animation
+  waveInterval = setInterval(animateWave, 100);
+}
+
+function stopRecording() {
+  if (recognition) { recognition.stop(); recognition = null; }
+  isRecording = false;
+  clearInterval(timerInterval);
+  clearInterval(waveInterval);
+
+  // UI
+  document.getElementById('recBtn').className = 'rec-btn idle';
+  document.getElementById('recBtn').textContent = '🎙️';
+  document.getElementById('recTitle').textContent = '녹음 완료';
+  document.getElementById('recSubtitle').textContent = `총 ${formatTimerDisplay(timerSeconds)} 녹음됨`;
+  document.getElementById('statusBadge').className = 'status-badge idle';
+  document.getElementById('statusBadge').textContent = '완료';
+
+  const bars = document.querySelectorAll('.wave-bar');
+  bars.forEach(b => b.style.height = '6px');
+}
+
+function animateWave() {
+  const bars = document.querySelectorAll('.wave-bar');
+  bars.forEach(bar => {
+    const h = Math.random() * 26 + 4;
+    bar.style.height = h + 'px';
+  });
+}
+
+// ─── Transcript ─────────────────────────────────────────
+function addTranscriptEntry(text) {
+  const area = document.getElementById('transcriptArea');
+  const div = document.createElement('div');
+  div.className = 'transcript-entry';
+
+  const highlightedText = highlightKeywords(text);
+  div.innerHTML = `
+    <div class="entry-meta">
+      <span class="entry-time">${formatTime(timerSeconds)}</span>
+    </div>
+    <div class="entry-text">${highlightedText}</div>
+  `;
+  area.appendChild(div);
+  allTranscript.push({ time: timerSeconds, text });
+  scrollTranscript();
+}
+
+function highlightKeywords(text) {
+  // Simple: highlight words >= 2 chars that look like nouns/keywords
+  return text.replace(/([가-힣a-zA-Z]{2,})/g, (word) => {
+    if (isKeyword(word)) {
+      return `<span class="keyword-highlight" onclick="searchFromKeyword('${word}')">${word}</span>`;
+    }
+    return word;
+  });
+}
+
+function isKeyword(word) {
+  const stopwords = new Set(['그리고','하지만','그래서','그런데','이것','저것','입니다','합니다','했습니다','있습니다','없습니다','됩니다','가장','정말','아직','이미','함께','때문에','위해서','대해서','거의','보다','같은','우리','저희','여기','저기','지금','오늘','내일','어제','조금','많이','나중','먼저','다음']);
+  if (stopwords.has(word)) return false;
+  if (word.length < 2) return false;
+  return true;
+}
+
+function scrollTranscript() {
+  const area = document.getElementById('transcriptArea');
+  area.scrollTop = area.scrollHeight;
+}
+
+// ─── Keyword Extraction & Auto Search ───────────────────
+function extractAndSearchKeywords(text) {
+  // Extract meaningful keywords (nouns / terms)
+  const words = text.match(/[가-힣a-zA-Z]{2,}/g) || [];
   const newKeywords = words.filter(w => isKeyword(w) && !detectedKeywords.has(w));
 
   newKeywords.forEach(kw => {
@@ -598,3 +1283,4 @@ function formatTimerDisplay(secs) {
 </script>
 </body>
 </html>
+
